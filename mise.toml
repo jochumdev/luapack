@@ -1,5 +1,6 @@
 [tools]
 cargo-insta = "latest"
+"cargo:cargo-zigbuild" = "latest"
 go = "latest"
 goreleaser = "latest"
 rust = "latest"
