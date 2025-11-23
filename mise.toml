@@ -1,3 +1,13 @@
 [tools]
 cargo-insta = "latest"
+go = "latest"
+goreleaser = "latest"
 rust = "latest"
+zig = "latest"
+
+[tasks.release]
+run = [
+  "rustup default stable",
+  "goreleaser release --clean",
+  "rustup default stable",
+]
