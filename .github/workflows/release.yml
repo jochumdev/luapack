@@ -15,11 +15,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install devtools
+        run: sudo apt install -y build-essential
+
       - name: Set up MinGW
         uses: egor-tensin/setup-mingw@v2
 
       - name: Install mise and run mise install
         uses: jdx/mise-action@v2
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Release using goreleaser
         run: mise run release
