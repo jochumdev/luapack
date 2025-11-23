@@ -1,0 +1,56 @@
+[package]
+name = "luapack"
+version = "0.1.1"
+description = "Lua bundler with replace/vendor modes"
+license = "MPL-2.0"
+edition = "2021"
+repository = "https://github.com/jochumdev/luapack"
+readme = "README.md"
+keywords = ["lua", "bundler", "cli", "ast", "build"]
+categories = ["command-line-utilities", "development-tools::build-tools"]
+exclude = ["examples/**", "tests/fixtures/**", ".github/**"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1.0"
+full_moon = { version = "2.0.0", default-features = false }
+regex = "1"
+glob = "0.3"
+config = { version = "0.15.18", default-features = false, features = [
+  "toml",
+  "yaml",
+  "json",
+] }
+serde = { version = "1", features = ["derive"] }
+handlebars = "6.3.2"
+
+[features]
+default = ["lua54", "luajit"]
+lua52 = ["full_moon/lua52"]
+lua53 = ["lua52", "full_moon/lua53"]
+lua54 = ["lua53", "full_moon/lua54"]
+luajit = ["full_moon/luajit"]
+
+[profile.dev]
+opt-level = 1
+debug = true
+debug-assertions = true
+overflow-checks = true
+incremental = true
+lto = false
+
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3
+full_moon.opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+incremental = false
+
+[dev-dependencies]
+insta = { version = "1.43.2", features = ["yaml"] }

@@ -1,0 +1,36 @@
+---
+source: tests/integration_init_search.rs
+expression: bundle
+---
+-- luapack bundle v0.1.1 auto-generated: DO NOT EDIT
+local __B_LOADED = {}
+local __B_MODULES = {}
+local __B_REQ_TO_PASS
+
+local function __B_REQUIRE(name)
+  if __B_LOADED[name] ~= nil then
+    return __B_LOADED[name] == true and nil or __B_LOADED[name]
+  end
+  local loader = __B_MODULES[name]
+  if loader then
+    local res = loader(__B_REQ_TO_PASS)
+    __B_LOADED[name] = (res == nil) and true or res
+    return res
+  end
+  error('module not found: ' .. name)
+end
+
+__B_REQ_TO_PASS = __B_REQUIRE
+
+-- module: pkg  (from tests/fixtures/init_search/lua/pkg/init.lua)
+__B_MODULES['pkg'] = function(require)
+return {pkg = true}
+end
+
+-- root module: __root
+__B_MODULES['__root'] = function(require)
+local p = require('pkg')
+return p
+end
+
+return __B_REQUIRE('__root')

@@ -1,0 +1,8 @@
+# Example config for examples/simple
+[bundle]
+lua = "5.4"
+paths = ["lua/?.lua", "lua/?/init.lua"]
+vendors = ["vendor/lua/?.lua", "vendor/lua/?/init.lua"]
+redact_base = "lua/"
+output = "dist/simple_bundle.lua"
+diagnostics = true

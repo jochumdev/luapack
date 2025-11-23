@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags: ["*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: true
+
+  release:
+    needs: ["create-release"]
+    name: Release (${{ matrix.artifact-name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact-name: luapack-windows-x86_64
+            cargo-target: x86_64-pc-windows-msvc
+          - os: ubuntu-22.04
+            artifact-name: luapack-linux-x86_64
+            cargo-target: x86_64-unknown-linux-gnu
+          - os: ubuntu-22.04
+            artifact-name: luapack-linux-x86_64-musl
+            cargo-target: x86_64-unknown-linux-musl
+          - os: ubuntu-22.04-arm
+            artifact-name: luapack-linux-aarch64
+            cargo-target: aarch64-unknown-linux-gnu
+          - os: ubuntu-22.04-arm
+            artifact-name: luapack-linux-aarch64-musl
+            cargo-target: aarch64-unknown-linux-musl
+          - os: macos-latest
+            artifact-name: luapack-macos-x86_64
+            cargo-target: x86_64-apple-darwin
+          - os: macos-latest
+            artifact-name: luapack-macos-aarch64
+            cargo-target: aarch64-apple-darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.cargo-target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build (release)
+        run: cargo build --release --locked --verbose --target ${{ matrix.cargo-target }}
+        env:
+          CARGO_TARGET_DIR: output
+
+      - name: Setup Archive + Extension
+        shell: bash
+        run: |
+          mkdir -p staging
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "output/${{ matrix.cargo-target }}/release/luapack.exe" staging/
+            cd staging
+            7z a ../release.zip *
+          else
+            cp "output/${{ matrix.cargo-target }}/release/luapack" staging/
+            cd staging
+            zip ../release.zip *
+          fi
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: release.zip
+
+      - name: Upload Binary to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: release.zip
+          asset_name: ${{ matrix.artifact-name }}.zip
+          asset_content_type: application/zip

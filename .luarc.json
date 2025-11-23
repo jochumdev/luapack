@@ -1,0 +1,15 @@
+{
+    "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+    "runtime.version": "Lua 5.4",
+    "completion.requireSeparator": ".",
+    "runtime.path": [
+        "?",
+        "?.lua"
+    ],
+    "workspace": {
+        "ignoreDir": [
+            "examples/*",
+            "tests/fixtures/*"
+        ]
+    }
+}

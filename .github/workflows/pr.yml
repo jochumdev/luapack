@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  feature-builds:
+    name: Feature tests ${{matrix.name}}
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: lua52
+            args: "--no-default-features --features lua52"
+          - name: lua53
+            args: "--no-default-features --features lua53"
+          - name: lua54
+            args: "--no-default-features --features lua54"
+          - name: luajit
+            args: "--no-default-features --features luajit"
+          - name: all-default
+            args: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test ${{ matrix.name }}
+        run: |
+          set -euxo pipefail
+          cargo test --locked --verbose ${{ matrix.args }}
+
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Rustfmt check
+        run: cargo fmt --all --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --locked --verbose
+
+      - name: Test
+        run: cargo test --all-targets --locked --verbose
+
+  bundle-and-run:
+    name: Bundle and run with Lua ${{ matrix.lua }}
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lua: ["5.1", "5.2", "5.3", "5.4"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Lua ${{ matrix.lua }}
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: ${{ matrix.lua }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build CLI
+        run: cargo build --locked --verbose
+
+      - name: Ensure dist directory
+        run: mkdir -p examples/simple/dist
+
+      - name: Bundle
+        if: ${{ hashFiles('examples/simple/lua/main.lua') != '' }}
+        run: |
+          cargo run -- bundle examples/simple/lua/main.lua \
+            --diagnostics \
+            --path "examples/simple/lua/?.lua" \
+            --path "examples/simple/lua/?/init.lua" \
+            --vendor "examples/simple/vendor/lua/?.lua" \
+            --vendor "examples/simple/vendor/lua/?/init.lua" \
+            --output examples/simple/dist/simple_bundle1.lua
+          lua examples/simple/dist/simple_bundle1.lua
+
+      - name: Bundle (config)
+        if: ${{ hashFiles('examples/simple/lua/main.lua') != '' }}
+        run: |
+          cargo run -- bundle examples/simple/lua/main.lua \
+            --diagnostics
+          lua examples/simple/dist/simple_bundle.lua
+
+      - name: Upload bundles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simple-bundles-${{ matrix.lua }}
+          path: |
+            examples/simple/dist/*.lua
+          if-no-files-found: ignore
+          retention-days: 7
